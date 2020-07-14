@@ -107,15 +107,15 @@ fun DeclarationContainerLoweringPass.asClassLoweringPass() = object : ClassLower
     }
 }
 
-fun DeclarationContainerLoweringPass.asScriptLoweringPass() = object : ScriptLoweringPass {
-    override fun lower(irScript: IrScript) {
-        this@asScriptLoweringPass.lower(irScript)
-    }
-}
+//fun DeclarationContainerLoweringPass.asScriptLoweringPass() = object : ScriptLoweringPass {
+//    override fun lower(irScript: IrScript) {
+//        this@asScriptLoweringPass.lower(irScript)
+//    }
+//}
 
 fun DeclarationContainerLoweringPass.runOnFilePostfix(irFile: IrFile) {
     this.asClassLoweringPass().runOnFilePostfix(irFile)
-    this.asScriptLoweringPass().runOnFilePostfix(irFile)
+//    this.asScriptLoweringPass().runOnFilePostfix(irFile)
 
     this.lower(irFile as IrDeclarationContainer)
 }
@@ -149,10 +149,7 @@ fun BodyLoweringPass.runOnFilePostfix(irFile: IrFile, withLocalDeclarations: Boo
             }
 
             override fun visitScript(declaration: IrScript, data: IrDeclaration?) {
-                ArrayList(declaration.declarations).forEach { it.accept(this, declaration) }
-                if (withLocalDeclarations) {
-                    declaration.statements.forEach { it.accept(this, null) }
-                }
+                ArrayList(declaration.statements).forEach { it.accept(this, declaration) }
                 declaration.thisReceiver.accept(this, declaration)
             }
 
@@ -258,14 +255,9 @@ fun DeclarationTransformer.runPostfix(withLocalDeclarations: Boolean = false): D
                 }
 
                 override fun visitScript(declaration: IrScript) {
+                    declaration.thisReceiver.accept(this, null)
                     ArrayList(declaration.declarations).forEach { it.accept(this, null) }
                     declaration.declarations.transformFlat(this@runPostfix::transformFlatRestricted)
-
-                    if (withLocalDeclarations) {
-                        declaration.statements.forEach { it.accept(this, null) }
-                    }
-
-                    declaration.thisReceiver.accept(this, null)
                 }
             })
 
