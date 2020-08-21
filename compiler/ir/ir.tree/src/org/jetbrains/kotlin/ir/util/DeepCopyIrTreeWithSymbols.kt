@@ -172,6 +172,7 @@ open class DeepCopyIrTreeWithSymbols(
             overriddenSymbols = declaration.overriddenSymbols.map {
                 symbolRemapper.getReferencedFunction(it) as IrSimpleFunctionSymbol
             }
+            correspondingPropertySymbol = declaration.correspondingPropertySymbol?.let { symbolRemapper.getReferencedProperty(it) }
             copyAttributes(declaration)
             transformFunctionChildren(declaration)
         }
@@ -227,15 +228,9 @@ open class DeepCopyIrTreeWithSymbols(
             containerSource = declaration.containerSource,
         ).apply {
             transformAnnotations(declaration)
-            this.backingField = declaration.backingField?.transform()?.also {
-                it.correspondingPropertySymbol = symbol
-            }
-            this.getter = declaration.getter?.transform()?.also {
-                it.correspondingPropertySymbol = symbol
-            }
-            this.setter = declaration.setter?.transform()?.also {
-                it.correspondingPropertySymbol = symbol
-            }
+            this.backingField = declaration.backingField?.transform()
+            this.getter = declaration.getter?.transform()
+            this.setter = declaration.setter?.transform()
         }
 
     override fun visitField(declaration: IrField): IrField =
@@ -252,6 +247,7 @@ open class DeepCopyIrTreeWithSymbols(
         ).apply {
             transformAnnotations(declaration)
             initializer = declaration.initializer?.transform()
+            correspondingPropertySymbol = declaration.correspondingPropertySymbol?.let{ symbolRemapper.getReferencedProperty(it) }
         }
 
     override fun visitLocalDelegatedProperty(declaration: IrLocalDelegatedProperty): IrLocalDelegatedProperty =
