@@ -16,6 +16,9 @@
 
 // TESTCASE NUMBER: 1
 enum class Case1
+
 fun case1(case1: Case1) {
     checkSubtype<Enum<Case1>>(case1)
+    val x: Case1 = Case1.valueOf("")
+    val y: Array<Case1> = Case1.values()
 }
