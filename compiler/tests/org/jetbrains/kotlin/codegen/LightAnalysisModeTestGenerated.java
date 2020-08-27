@@ -13802,6 +13802,11 @@ public class LightAnalysisModeTestGenerated extends AbstractLightAnalysisModeTes
             runTest("compiler/testData/codegen/box/inference/coercionToUnitForLambdaReturnTypeWithFlexibleConstraint.kt");
         }
 
+        @TestMetadata("coercionToUnitForLastArgumentHavingOtherLambdasAsArguments.kt")
+        public void testCoercionToUnitForLastArgumentHavingOtherLambdasAsArguments() throws Exception {
+            runTest("compiler/testData/codegen/box/inference/coercionToUnitForLastArgumentHavingOtherLambdasAsArguments.kt");
+        }
+
         @TestMetadata("coercionToUnitWithLastLambdaExpression.kt")
         public void testCoercionToUnitWithLastLambdaExpression() throws Exception {
             runTest("compiler/testData/codegen/box/inference/coercionToUnitWithLastLambdaExpression.kt");

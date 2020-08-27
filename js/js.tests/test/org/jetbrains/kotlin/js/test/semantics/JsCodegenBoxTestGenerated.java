@@ -10832,6 +10832,11 @@ public class JsCodegenBoxTestGenerated extends AbstractJsCodegenBoxTest {
             runTest("compiler/testData/codegen/box/inference/capturedStarProjection.kt");
         }
 
+        @TestMetadata("coercionToUnitForLastArgumentHavingOtherLambdasAsArguments.kt")
+        public void testCoercionToUnitForLastArgumentHavingOtherLambdasAsArguments() throws Exception {
+            runTest("compiler/testData/codegen/box/inference/coercionToUnitForLastArgumentHavingOtherLambdasAsArguments.kt");
+        }
+
         @TestMetadata("coercionToUnitWithLastLambdaExpression.kt")
         public void testCoercionToUnitWithLastLambdaExpression() throws Exception {
             runTest("compiler/testData/codegen/box/inference/coercionToUnitWithLastLambdaExpression.kt");
