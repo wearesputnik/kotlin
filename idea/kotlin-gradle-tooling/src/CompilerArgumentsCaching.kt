@@ -5,9 +5,8 @@
 
 package org.jetbrains.kotlin.gradle
 
-import java.io.File
 import java.io.Serializable
-import java.util.HashMap
+import java.util.*
 
 typealias CommonArgumentCacheIdType = Int
 typealias ClasspathArgumentCacheIdType = Array<Int>
@@ -47,69 +46,7 @@ fun CachedCompilerArgumentBySourceSet.deepCopy(): CachedCompilerArgumentBySource
     return result
 }
 
-interface IArgumentsCache<T> : Serializable {
-    fun cacheArgument(argument: String): T
-    fun obtainCacheIndex(argument: String): T?
-    fun selectArgument(index: T): String?
-    fun clearCache()
-    val lastIndex: Int
-}
-
-class CommonCompilerArgumentCache(initialKey: Int = 0) : IArgumentsCache<CommonArgumentCacheIdType> {
-    private var currentIndex = initialKey
-
-    private val idToCompilerArgumentMap = mutableMapOf<CommonArgumentCacheIdType, String>()
-    private val compilerArgumentToIdMap = mutableMapOf<String, CommonArgumentCacheIdType>()
-
-    override fun cacheArgument(argument: String): CommonArgumentCacheIdType = compilerArgumentToIdMap[argument] ?: run {
-        idToCompilerArgumentMap += currentIndex to argument
-        compilerArgumentToIdMap += argument to currentIndex
-        val result = currentIndex
-        currentIndex++
-        result
-    }
-
-    override fun obtainCacheIndex(argument: String): Int? = compilerArgumentToIdMap[argument]
-
-    override fun selectArgument(index: Int): String? = idToCompilerArgumentMap[index]
-
-    override fun clearCache() {
-        idToCompilerArgumentMap.clear()
-        compilerArgumentToIdMap.clear()
-    }
-
-    override val lastIndex: Int
-        get() = currentIndex
-}
-
-class ClasspathCompilerArgumentCache(initialKey: Int = 0) : IArgumentsCache<ClasspathArgumentCacheIdType> {
-    private var currentIndex = initialKey
-
-    override val lastIndex: Int
-        get() = currentIndex
-
-    private val idToCompilerArgumentMap = mutableMapOf<CommonArgumentCacheIdType, String>()
-    private val compilerArgumentToIdMap = mutableMapOf<String, CommonArgumentCacheIdType>()
-
-    override fun cacheArgument(argument: String): ClasspathArgumentCacheIdType =
-        argument.split(File.pathSeparator).map {
-            compilerArgumentToIdMap[it] ?: run {
-                idToCompilerArgumentMap += currentIndex to argument
-                compilerArgumentToIdMap += argument to currentIndex
-                val result = currentIndex
-                currentIndex++
-                result
-            }
-        }.toTypedArray()
-
-    override fun obtainCacheIndex(argument: String): ClasspathArgumentCacheIdType? =
-        argument.split(File.pathSeparator).mapNotNull { compilerArgumentToIdMap[it] }.toTypedArray().takeIf { it.isNotEmpty() }
-
-    override fun selectArgument(index: ClasspathArgumentCacheIdType): String =
-        index.mapNotNull { idToCompilerArgumentMap[it] }.joinToString(separator = File.pathSeparator)
-
-    override fun clearCache() {
-        idToCompilerArgumentMap.clear()
-        compilerArgumentToIdMap.clear()
-    }
-}
+data class CompilerArgumentsCachingMapper(
+    val cacheIndexToCompilerArguments: MutableMap<Int, String> = mutableMapOf(),
+    val compilerArgumentToCacheIndex: MutableMap<String, Int> = mutableMapOf()
+) : Serializable

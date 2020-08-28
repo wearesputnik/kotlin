@@ -55,8 +55,7 @@ interface KotlinGradleModel : Serializable {
     val kotlinTarget: String?
     val kotlinTaskProperties: KotlinTaskPropertiesBySourceSet
     val gradleUserHome: String
-    val commonArgumentsCache: CommonCompilerArgumentCache
-    val classpathCompilerArgumentCache: ClasspathCompilerArgumentCache
+    val cachingMapper: CompilerArgumentsCachingMapper
 }
 
 data class KotlinGradleModelImpl(
@@ -68,8 +67,7 @@ data class KotlinGradleModelImpl(
     override val kotlinTarget: String? = null,
     override val kotlinTaskProperties: KotlinTaskPropertiesBySourceSet,
     override val gradleUserHome: String,
-    override val commonArgumentsCache: CommonCompilerArgumentCache,
-    override val classpathCompilerArgumentCache: ClasspathCompilerArgumentCache
+    override val cachingMapper: CompilerArgumentsCachingMapper
 ) : KotlinGradleModel
 
 abstract class AbstractKotlinGradleModelBuilder : ModelBuilderService {
@@ -166,76 +164,69 @@ class KotlinGradleModelBuilder : AbstractKotlinGradleModelBuilder() {
         }
     }
 
-    private val compilerArgumentsAccumulatingCache = CommonCompilerArgumentCache()
-    private val classpathArgumentsAccumulatingCache = ClasspathCompilerArgumentCache()
-
-    fun String.cacheCommonIfNotCachedYet(currentCompilerArgumentsCache: CommonCompilerArgumentCache): Int {
-        return compilerArgumentsAccumulatingCache.obtainCacheIndex(this) ?: run {
-            val accumulatorId = compilerArgumentsAccumulatingCache.cacheArgument(this)
-            val currentId = currentCompilerArgumentsCache.cacheArgument(this)
-            //TODO ychernyshev: remove before pushing
-            check(accumulatorId == currentId) { "Indexes from local and common cache are not equal!" }
-            accumulatorId
+    private fun String.cacheCommonArgument(cachingMapper: CompilerArgumentsCachingMapper): Int =
+        accumulatingMapper.compilerArgumentToCacheIndex[this] ?: run {
+            val freeKey = accumulatingLastIndex
+            accumulatingLastIndex++
+            accumulatingMapper.compilerArgumentToCacheIndex[this] = freeKey
+            accumulatingMapper.cacheIndexToCompilerArguments[freeKey] = this
+            cachingMapper.compilerArgumentToCacheIndex[this] = freeKey
+            cachingMapper.cacheIndexToCompilerArguments[freeKey] = this
+            freeKey
         }
+
+    private fun String.cacheClasspathArgument(cachingMapper: CompilerArgumentsCachingMapper): Array<Int> =
+        split(File.pathSeparator).map { it.cacheCommonArgument(cachingMapper) }.toTypedArray()
+
+    private fun List<String>.divideToCommonAndClasspathArguments(
+        commonArguments: MutableList<String>,
+        classpathArguments: MutableList<String>
+    ) {
+        val classpathArgumentsIndexes = flatMapIndexed { index: Int, s: String ->
+            if ("-classpath" in s || "-cp" in s) listOf(index, index + 1) else emptyList()
+        }.toSet()
+        filterIndexed { index, _ -> index !in classpathArgumentsIndexes }.toCollection(commonArguments)
+        classpathArgumentsIndexes.map { this[it] }.toCollection(classpathArguments)
     }
 
-    fun String.cacheClasspathIfNotCachedYet(currentClasspathArgumentCache: ClasspathCompilerArgumentCache): Array<Int> {
-        split(File.pathSeparator).forEach {
-            classpathArgumentsAccumulatingCache.obtainCacheIndex(it) ?: run {
-                val accumulatorId = classpathArgumentsAccumulatingCache.cacheArgument(it)
-                val currentId = currentClasspathArgumentCache.cacheArgument(it)
-                check(accumulatorId.contentEquals(currentId)) { "Indexes from local and common cache are not equal!" }
-            }
-        }
-        return currentClasspathArgumentCache.cacheArgument(this)
-    }
+    private val accumulatingMapper = CompilerArgumentsCachingMapper()
+    private var accumulatingLastIndex = 0
 
     override fun buildAll(modelName: String?, project: Project): KotlinGradleModelImpl {
-        val currentCompilerArgumentsCache = CommonCompilerArgumentCache(compilerArgumentsAccumulatingCache.lastIndex)
-        val currentClasspathArgumentsCache = ClasspathCompilerArgumentCache(classpathArgumentsAccumulatingCache.lastIndex)
+        val cachingMapper = CompilerArgumentsCachingMapper()
 
         val kotlinPluginId = kotlinPluginIds.singleOrNull { project.plugins.findPlugin(it) != null }
         val platformPluginId = platformPluginIds.singleOrNull { project.plugins.findPlugin(it) != null }
 
-        val compilerArgumentsBySourceSet = LinkedHashMap<String, CachedArgsInfo>()
+        val cachedArgumentsBySourceSet = LinkedHashMap<String, CachedArgsInfo>()
         val extraProperties = HashMap<String, KotlinTaskProperties>()
 
         project.getAllTasks(false)[project]?.forEach { compileTask ->
             if (compileTask.javaClass.name !in kotlinCompileTaskClasses) return@forEach
 
             val sourceSetName = compileTask.getSourceSetName()
-            val currentArguments = ArrayList(
-                compileTask.getCompilerArguments("getSerializedCompilerArguments")
-                    ?: compileTask.getCompilerArguments("getSerializedCompilerArgumentsIgnoreClasspathIssues")
-                    ?: emptyList()
-            )
+            val currentArguments = compileTask.getCompilerArguments("getSerializedCompilerArguments")
+                ?: compileTask.getCompilerArguments("getSerializedCompilerArgumentsIgnoreClasspathIssues")
+                ?: emptyList()
 
-            val currentClasspathArguments = currentArguments.flatMapIndexed { index: Int, s: String ->
-                if ("-classpath" in s) listOf(index, index + 1) else emptyList()
-            }.map { currentArguments[it] }
 
-            val currentClasspathArgumentCacheIds =
-                currentClasspathArguments.map { it.cacheClasspathIfNotCachedYet(currentClasspathArgumentsCache) }.toTypedArray()
+            val currentClasspathArguments = mutableListOf<String>()
+            val currentCommonArguments = mutableListOf<String>()
+            currentArguments.divideToCommonAndClasspathArguments(currentCommonArguments, currentClasspathArguments)
+            val currentCommonArgumentCacheIds = currentCommonArguments.map { it.cacheCommonArgument(cachingMapper) }.toTypedArray()
+            val currentClasspathArgumentCacheIds = currentClasspathArguments.map { it.cacheClasspathArgument(cachingMapper) }.toTypedArray()
 
-            currentArguments.removeAll(currentClasspathArguments)
-            val currentCommonArgumentCacheIds =
-                currentArguments.map { it.cacheCommonIfNotCachedYet(currentCompilerArgumentsCache) }.toTypedArray()
-
-            val defaultArguments = ArrayList(compileTask.getCompilerArguments("getDefaultSerializedCompilerArguments").orEmpty())
-            val defaultClasspathArguments = defaultArguments.flatMapIndexed { index: Int, s: String ->
-                if ("-classpath" in s) listOf(index, index + 1) else emptyList()
-            }.map { defaultArguments[it] }
-            val defaultClasspathArgumentCacheIds =
-                defaultClasspathArguments.map { it.cacheClasspathIfNotCachedYet(currentClasspathArgumentsCache) }.toTypedArray()
-
-            defaultArguments.removeAll(defaultClasspathArguments)
-            val defaultCommonArgumentCacheIds =
-                defaultArguments.map { it.cacheCommonIfNotCachedYet(currentCompilerArgumentsCache) }.toTypedArray()
+            val defaultArguments = compileTask.getCompilerArguments("getDefaultSerializedCompilerArguments").orEmpty()
+            val defaultClasspathArguments = mutableListOf<String>()
+            val defaultCommonArguments = mutableListOf<String>()
+            defaultArguments.divideToCommonAndClasspathArguments(defaultCommonArguments, defaultClasspathArguments)
+            val defaultCommonArgumentCacheIds = defaultCommonArguments.map { it.cacheCommonArgument(cachingMapper) }.toTypedArray()
+            val defaultClasspathArgumentCacheIds = defaultClasspathArguments.map { it.cacheClasspathArgument(cachingMapper) }.toTypedArray()
 
             val dependencyClasspath = compileTask.getDependencyClasspath()
             val dependencyClasspathCacheIds =
-                dependencyClasspath.map { it.cacheClasspathIfNotCachedYet(currentClasspathArgumentsCache) }.toTypedArray()
-            compilerArgumentsBySourceSet[sourceSetName] = CachedArgsInfoImpl(
+                dependencyClasspath.map { it.cacheClasspathArgument(cachingMapper) }.toTypedArray()
+            cachedArgumentsBySourceSet[sourceSetName] = CachedArgsInfoImpl(
                 currentCommonArgumentCacheIds,
                 currentClasspathArgumentCacheIds,
                 defaultCommonArgumentCacheIds,
@@ -250,15 +241,14 @@ class KotlinGradleModelBuilder : AbstractKotlinGradleModelBuilder() {
 
         return KotlinGradleModelImpl(
             kotlinPluginId != null || platformPluginId != null,
-            compilerArgumentsBySourceSet,
+            cachedArgumentsBySourceSet,
             getCoroutines(project),
             platform,
             implementedProjects.map { it.pathOrName() },
             platform ?: kotlinPluginId,
             extraProperties,
             project.gradle.gradleUserHomeDir.absolutePath,
-            currentCompilerArgumentsCache,
-            currentClasspathArgumentsCache
+            cachingMapper
         )
     }
 }
