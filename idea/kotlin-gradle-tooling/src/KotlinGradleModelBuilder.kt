@@ -55,7 +55,7 @@ interface KotlinGradleModel : Serializable {
     val kotlinTarget: String?
     val kotlinTaskProperties: KotlinTaskPropertiesBySourceSet
     val gradleUserHome: String
-    val cachingMapper: CompilerArgumentsCachingMapper
+    val compilerArgumentsMapper: ICompilerArgumentsMapper
 }
 
 data class KotlinGradleModelImpl(
@@ -67,7 +67,7 @@ data class KotlinGradleModelImpl(
     override val kotlinTarget: String? = null,
     override val kotlinTaskProperties: KotlinTaskPropertiesBySourceSet,
     override val gradleUserHome: String,
-    override val cachingMapper: CompilerArgumentsCachingMapper
+    override val compilerArgumentsMapper: ICompilerArgumentsMapper
 ) : KotlinGradleModel
 
 abstract class AbstractKotlinGradleModelBuilder : ModelBuilderService {
@@ -164,20 +164,6 @@ class KotlinGradleModelBuilder : AbstractKotlinGradleModelBuilder() {
         }
     }
 
-    private fun String.cacheCommonArgument(cachingMapper: CompilerArgumentsCachingMapper): Int =
-        accumulatingMapper.compilerArgumentToCacheIndex[this] ?: run {
-            val freeKey = accumulatingLastIndex
-            accumulatingLastIndex++
-            accumulatingMapper.compilerArgumentToCacheIndex[this] = freeKey
-            accumulatingMapper.cacheIndexToCompilerArguments[freeKey] = this
-            cachingMapper.compilerArgumentToCacheIndex[this] = freeKey
-            cachingMapper.cacheIndexToCompilerArguments[freeKey] = this
-            freeKey
-        }
-
-    private fun String.cacheClasspathArgument(cachingMapper: CompilerArgumentsCachingMapper): Array<Int> =
-        split(File.pathSeparator).map { it.cacheCommonArgument(cachingMapper) }.toTypedArray()
-
     private fun List<String>.divideToCommonAndClasspathArguments(
         commonArguments: MutableList<String>,
         classpathArguments: MutableList<String>
@@ -189,11 +175,10 @@ class KotlinGradleModelBuilder : AbstractKotlinGradleModelBuilder() {
         classpathArgumentsIndexes.map { this[it] }.toCollection(classpathArguments)
     }
 
-    private val accumulatingMapper = CompilerArgumentsCachingMapper()
-    private var accumulatingLastIndex = 0
+    private val modelBuilderMapper = CompilerArgumentsMapperWithCheckout()
 
     override fun buildAll(modelName: String?, project: Project): KotlinGradleModelImpl {
-        val cachingMapper = CompilerArgumentsCachingMapper()
+        val modelDetachableMapper = modelBuilderMapper.checkoutMapper()
 
         val kotlinPluginId = kotlinPluginIds.singleOrNull { project.plugins.findPlugin(it) != null }
         val platformPluginId = platformPluginIds.singleOrNull { project.plugins.findPlugin(it) != null }
@@ -213,19 +198,23 @@ class KotlinGradleModelBuilder : AbstractKotlinGradleModelBuilder() {
             val currentClasspathArguments = mutableListOf<String>()
             val currentCommonArguments = mutableListOf<String>()
             currentArguments.divideToCommonAndClasspathArguments(currentCommonArguments, currentClasspathArguments)
-            val currentCommonArgumentCacheIds = currentCommonArguments.map { it.cacheCommonArgument(cachingMapper) }.toTypedArray()
-            val currentClasspathArgumentCacheIds = currentClasspathArguments.map { it.cacheClasspathArgument(cachingMapper) }.toTypedArray()
+            val currentCommonArgumentCacheIds =
+                currentCommonArguments.map { modelDetachableMapper.cacheCommonArgument(it) }.toTypedArray()
+            val currentClasspathArgumentCacheIds =
+                currentClasspathArguments.map { modelDetachableMapper.cacheClasspathArgument(it) }.toTypedArray()
 
             val defaultArguments = compileTask.getCompilerArguments("getDefaultSerializedCompilerArguments").orEmpty()
             val defaultClasspathArguments = mutableListOf<String>()
             val defaultCommonArguments = mutableListOf<String>()
             defaultArguments.divideToCommonAndClasspathArguments(defaultCommonArguments, defaultClasspathArguments)
-            val defaultCommonArgumentCacheIds = defaultCommonArguments.map { it.cacheCommonArgument(cachingMapper) }.toTypedArray()
-            val defaultClasspathArgumentCacheIds = defaultClasspathArguments.map { it.cacheClasspathArgument(cachingMapper) }.toTypedArray()
+            val defaultCommonArgumentCacheIds =
+                defaultCommonArguments.map { modelDetachableMapper.cacheCommonArgument(it) }.toTypedArray()
+            val defaultClasspathArgumentCacheIds =
+                defaultClasspathArguments.map { modelDetachableMapper.cacheClasspathArgument(it) }.toTypedArray()
 
             val dependencyClasspath = compileTask.getDependencyClasspath()
             val dependencyClasspathCacheIds =
-                dependencyClasspath.map { it.cacheClasspathArgument(cachingMapper) }.toTypedArray()
+                dependencyClasspath.map { modelDetachableMapper.cacheClasspathArgument(it) }.toTypedArray()
             cachedArgumentsBySourceSet[sourceSetName] = CachedArgsInfoImpl(
                 currentCommonArgumentCacheIds,
                 currentClasspathArgumentCacheIds,
@@ -239,6 +228,8 @@ class KotlinGradleModelBuilder : AbstractKotlinGradleModelBuilder() {
         val platform = platformPluginId ?: pluginToPlatform.entries.singleOrNull { project.plugins.findPlugin(it.key) != null }?.value
         val implementedProjects = getImplementedProjects(project)
 
+        val detachedMapper = modelDetachableMapper.detach()
+
         return KotlinGradleModelImpl(
             kotlinPluginId != null || platformPluginId != null,
             cachedArgumentsBySourceSet,
@@ -248,7 +239,7 @@ class KotlinGradleModelBuilder : AbstractKotlinGradleModelBuilder() {
             platform ?: kotlinPluginId,
             extraProperties,
             project.gradle.gradleUserHomeDir.absolutePath,
-            cachingMapper
+            detachedMapper
         )
     }
 }

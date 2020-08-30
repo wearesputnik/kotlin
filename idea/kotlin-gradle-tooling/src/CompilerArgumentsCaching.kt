@@ -5,6 +5,7 @@
 
 package org.jetbrains.kotlin.gradle
 
+import java.io.File
 import java.io.Serializable
 import java.util.*
 
@@ -46,7 +47,70 @@ fun CachedCompilerArgumentBySourceSet.deepCopy(): CachedCompilerArgumentBySource
     return result
 }
 
-data class CompilerArgumentsCachingMapper(
-    val cacheIndexToCompilerArguments: MutableMap<Int, String> = mutableMapOf(),
-    val compilerArgumentToCacheIndex: MutableMap<String, Int> = mutableMapOf()
-) : Serializable
+interface ICompilerArgumentsMapper : Serializable {
+    fun getArgumentCache(argument: String): Int?
+    fun cacheCommonArgument(commonArgument: String): Int
+    fun getCommonArgument(id: Int): String?
+    fun cacheClasspathArgument(classpathArgument: String): Array<Int>
+    fun getClasspathArgument(ids: Array<Int>): String
+    fun clear()
+}
+
+abstract class CompilerArgumentsMapper(val initialId: Int = 0) : ICompilerArgumentsMapper {
+    protected var nextId = initialId
+    protected val idToCompilerArguments: MutableMap<Int, String> = mutableMapOf()
+    protected val compilerArgumentToId: MutableMap<String, Int> = mutableMapOf()
+
+    override fun getArgumentCache(argument: String): Int? = compilerArgumentToId[argument]
+
+    override open fun cacheCommonArgument(commonArgument: String): Int = getArgumentCache(commonArgument)
+        ?: run {
+            val index = nextId++
+            idToCompilerArguments[index] = commonArgument
+            compilerArgumentToId[commonArgument] = index
+            index
+        }
+
+    override fun getCommonArgument(id: Int): String? = idToCompilerArguments[id]
+
+    override fun cacheClasspathArgument(classpathArgument: String): Array<Int> =
+        classpathArgument.split(File.pathSeparator).map { cacheCommonArgument(it) }.toTypedArray()
+
+    override fun getClasspathArgument(ids: Array<Int>): String = ids.joinToString(File.pathSeparator) { getCommonArgument(it)!! }
+    override fun clear() {
+        idToCompilerArguments.clear()
+        compilerArgumentToId.clear()
+        nextId = initialId
+    }
+}
+
+interface IDetachableMapper : ICompilerArgumentsMapper {
+    val masterMapper: ICompilerArgumentsMapper
+    fun detach(): ICompilerArgumentsMapper
+}
+
+class DetachableCompilerArgumentsMapper(override val masterMapper: ICompilerArgumentsMapper) : CompilerArgumentsMapper(),
+    IDetachableMapper {
+    override fun cacheCommonArgument(commonArgument: String): Int =
+        masterMapper.getArgumentCache(commonArgument) ?: masterMapper.cacheCommonArgument(commonArgument).also {
+            idToCompilerArguments[it] = commonArgument
+            compilerArgumentToId[commonArgument] = it
+        }
+
+    override fun detach(): ICompilerArgumentsMapper = object : CompilerArgumentsMapper(nextId) {}.apply {
+        idToCompilerArguments.putAll(this@DetachableCompilerArgumentsMapper.idToCompilerArguments)
+        compilerArgumentToId.putAll(this@DetachableCompilerArgumentsMapper.compilerArgumentToId)
+    }
+}
+
+interface IWithCheckoutMapper : ICompilerArgumentsMapper {
+    fun checkoutMapper(): IDetachableMapper
+}
+
+class CompilerArgumentsMapperWithCheckout : CompilerArgumentsMapper(), IWithCheckoutMapper {
+    override fun checkoutMapper(): IDetachableMapper = DetachableCompilerArgumentsMapper(this)
+}
+
+interface IWithMergeMapper : ICompilerArgumentsMapper {
+    fun mergeMapper(mapper: ICompilerArgumentsMapper)
+}
