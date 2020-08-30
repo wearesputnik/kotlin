@@ -7,7 +7,6 @@ package org.jetbrains.kotlin.gradle
 
 import java.io.File
 import java.io.Serializable
-import java.util.*
 
 typealias CommonArgumentCacheIdType = Int
 typealias ClasspathArgumentCacheIdType = Array<Int>
@@ -50,10 +49,11 @@ fun CachedCompilerArgumentBySourceSet.deepCopy(): CachedCompilerArgumentBySource
 interface ICompilerArgumentsMapper : Serializable {
     fun getArgumentCache(argument: String): Int?
     fun cacheCommonArgument(commonArgument: String): Int
-    fun getCommonArgument(id: Int): String?
+    fun getCommonArgument(id: Int): String
     fun cacheClasspathArgument(classpathArgument: String): Array<Int>
     fun getClasspathArgument(ids: Array<Int>): String
     fun clear()
+    fun copyCache(): Map<Int, String>
 }
 
 abstract class CompilerArgumentsMapper(val initialId: Int = 0) : ICompilerArgumentsMapper {
@@ -63,7 +63,7 @@ abstract class CompilerArgumentsMapper(val initialId: Int = 0) : ICompilerArgume
 
     override fun getArgumentCache(argument: String): Int? = compilerArgumentToId[argument]
 
-    override open fun cacheCommonArgument(commonArgument: String): Int = getArgumentCache(commonArgument)
+    override fun cacheCommonArgument(commonArgument: String): Int = getArgumentCache(commonArgument)
         ?: run {
             val index = nextId++
             idToCompilerArguments[index] = commonArgument
@@ -71,17 +71,19 @@ abstract class CompilerArgumentsMapper(val initialId: Int = 0) : ICompilerArgume
             index
         }
 
-    override fun getCommonArgument(id: Int): String? = idToCompilerArguments[id]
+    override fun getCommonArgument(id: Int): String = idToCompilerArguments[id]!!
 
     override fun cacheClasspathArgument(classpathArgument: String): Array<Int> =
         classpathArgument.split(File.pathSeparator).map { cacheCommonArgument(it) }.toTypedArray()
 
-    override fun getClasspathArgument(ids: Array<Int>): String = ids.joinToString(File.pathSeparator) { getCommonArgument(it)!! }
+    override fun getClasspathArgument(ids: Array<Int>): String = ids.joinToString(File.pathSeparator) { getCommonArgument(it) }
     override fun clear() {
         idToCompilerArguments.clear()
         compilerArgumentToId.clear()
         nextId = initialId
     }
+
+    override fun copyCache(): Map<Int, String> = HashMap(idToCompilerArguments)
 }
 
 interface IDetachableMapper : ICompilerArgumentsMapper {
@@ -113,4 +115,14 @@ class CompilerArgumentsMapperWithCheckout : CompilerArgumentsMapper(), IWithChec
 
 interface IWithMergeMapper : ICompilerArgumentsMapper {
     fun mergeMapper(mapper: ICompilerArgumentsMapper)
+}
+
+class CompilerArgumentsMapperWithMerge : CompilerArgumentsMapper(), IWithMergeMapper {
+
+    override fun mergeMapper(mapper: ICompilerArgumentsMapper) {
+        mapper.copyCache().forEach { (id, arg) ->
+            idToCompilerArguments[id] = arg
+            compilerArgumentToId[arg] = id
+        }
+    }
 }

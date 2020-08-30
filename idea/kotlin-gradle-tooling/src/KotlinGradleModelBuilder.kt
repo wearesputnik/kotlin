@@ -172,7 +172,8 @@ class KotlinGradleModelBuilder : AbstractKotlinGradleModelBuilder() {
             if ("-classpath" in s || "-cp" in s) listOf(index, index + 1) else emptyList()
         }.toSet()
         filterIndexed { index, _ -> index !in classpathArgumentsIndexes }.toCollection(commonArguments)
-        classpathArgumentsIndexes.map { this[it] }.toCollection(classpathArguments)
+        classpathArgumentsIndexes.map { this[it] }
+            .toCollection(classpathArguments)
     }
 
     private val modelBuilderMapper = CompilerArgumentsMapperWithCheckout()
