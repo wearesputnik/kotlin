@@ -6,6 +6,7 @@
 package org.jetbrains.kotlin.resolve.calls.inference.components
 
 import org.jetbrains.kotlin.resolve.calls.components.transformToResolvedLambda
+import org.jetbrains.kotlin.resolve.calls.inference.addEqualityConstraintIfCompatible
 import org.jetbrains.kotlin.resolve.calls.inference.model.*
 import org.jetbrains.kotlin.resolve.calls.model.*
 import org.jetbrains.kotlin.types.*
@@ -82,6 +83,16 @@ class KotlinConstraintSystemCompleter(
             // If there aren't any postponed arguments and ready for fixation variables, then completion isn't needed: nothing to do
             if (postponedArguments.isEmpty() && !isThereAnyReadyForFixationVariable)
                 break
+
+            for (variable in variablesThatCanBeCoercedToUnit) {
+                val topLevelAtom = topLevelAtoms.firstOrNull()
+                topLevelType.constructor.builtIns.unitType
+                getBuilder().addEqualityConstraintIfCompatible(
+                    variable.defaultType(),
+                    topLevelType.constructor.builtIns.unitType,
+                    ExpectedTypeConstraintPositionImpl(topLevelAtom!!.atom as KotlinCall)
+                )
+            }
 
             val postponedArgumentsWithRevisableType = postponedArguments.filterIsInstance<PostponedAtomWithRevisableExpectedType>()
             val dependencyProvider =

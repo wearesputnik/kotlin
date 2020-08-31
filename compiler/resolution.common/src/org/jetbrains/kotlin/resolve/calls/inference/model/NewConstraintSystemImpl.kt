@@ -123,6 +123,10 @@ class NewConstraintSystemImpl(
         storage.revisedReturnTypes[expectedType] = newVariable
     }
 
+    override fun markCoercableToUnitVariable(variable: TypeVariableMarker) {
+        storage.coercableToUnitVariables += variable
+    }
+
     override fun addSubtypeConstraint(lowerType: KotlinTypeMarker, upperType: KotlinTypeMarker, position: ConstraintPosition) =
         constraintInjector.addInitialSubtypeConstraint(
             apply { checkState(State.BUILDING, State.COMPLETION, State.TRANSACTION) },
@@ -299,6 +303,12 @@ class NewConstraintSystemImpl(
             return storage.postponedTypeVariables
         }
 
+    override val variablesThatCanBeCoercedToUnit: List<TypeVariableMarker>
+        get() {
+            checkState(State.BUILDING, State.COMPLETION, State.TRANSACTION)
+            return storage.coercableToUnitVariables
+        }
+
     // ConstraintInjector.Context, KotlinConstraintSystemCompleter.Context
     override fun addError(error: ConstraintSystemError) {
         checkState(State.BUILDING, State.COMPLETION, State.TRANSACTION)
@@ -359,6 +369,11 @@ class NewConstraintSystemImpl(
             val variable = storage.notFixedTypeVariables[typeConstructor]?.typeVariable
             variable !in storage.postponedTypeVariables && storage.notFixedTypeVariables.containsKey(typeConstructor)
         }
+    }
+
+    override fun canBeCoercedToUnit(variable: TypeVariableMarker): Boolean {
+        checkState(State.BUILDING, State.COMPLETION)
+        return variable in storage.coercableToUnitVariables
     }
 
     // PostponedArgumentsAnalyzer.Context

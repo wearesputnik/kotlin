@@ -284,10 +284,15 @@ class KotlinCallCompleter(
                 return
             }
 
-            expectedType === TypeUtils.UNIT_EXPECTED_TYPE ->
-                csBuilder.addEqualityConstraintIfCompatible(
-                    returnType, csBuilder.builtIns.unitType, ExpectedTypeConstraintPositionImpl(resolvedCall.atom)
-                )
+            expectedType === TypeUtils.UNIT_EXPECTED_TYPE -> {
+                if (csBuilder.isTypeVariable(returnType)) {
+                    val variable = csBuilder.currentStorage().allTypeVariables[returnType.constructor] ?: return
+                    csBuilder.markCoercableToUnitVariable(variable)
+                }
+//                csBuilder.addEqualityConstraintIfCompatible(
+//                    returnType, csBuilder.builtIns.unitType, ExpectedTypeConstraintPositionImpl(resolvedCall.atom)
+//                )
+            }
 
             else ->
                 csBuilder.addSubtypeConstraint(returnType, expectedType, ExpectedTypeConstraintPositionImpl(resolvedCall.atom))

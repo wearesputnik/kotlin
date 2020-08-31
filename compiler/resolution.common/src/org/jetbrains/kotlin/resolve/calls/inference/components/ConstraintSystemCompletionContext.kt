@@ -18,12 +18,16 @@ interface ConstraintSystemCompletionContext : VariableFixationFinder.Context, Re
     override val notFixedTypeVariables: Map<TypeConstructorMarker, VariableWithConstraints>
     override val postponedTypeVariables: List<TypeVariableMarker>
 
+    val variablesThatCanBeCoercedToUnit: List<TypeVariableMarker>
+
     fun getBuilder(): ConstraintSystemBuilder
 
     // type can be proper if it not contains not fixed type variables
     fun canBeProper(type: KotlinTypeMarker): Boolean
 
     fun containsOnlyFixedOrPostponedVariables(type: KotlinTypeMarker): Boolean
+
+    fun canBeCoercedToUnit(variable: TypeVariableMarker): Boolean
 
     // mutable operations
     fun addError(error: ConstraintSystemError)
