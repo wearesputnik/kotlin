@@ -23,6 +23,7 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
         totalModules.clear()
         okModules.clear()
         errorModules.clear()
+        crashedModules.clear()
     }
 
     private data class CumulativeTime(
@@ -55,6 +56,7 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
     private val totalModules = mutableListOf<ModuleData>()
     private val okModules = mutableListOf<ModuleData>()
     private val errorModules = mutableListOf<ModuleData>()
+    private val crashedModules = mutableListOf<ModuleData>()
 
     override fun afterPass(pass: Int) {
         createReport(finalReport = pass == PASSES - 1)
@@ -140,6 +142,17 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
                     println("${errorModule.qualifiedName}: ${errorModule.targetInfo}")
                     println("        1st error: ${errorModule.compilationError}")
                 }
+                val crashedModuleGroups = crashedModules.groupBy { it.exceptionMessage.substring(0..59) }
+                for ((exceptionMessage, modules) in crashedModuleGroups) {
+                    println()
+                    println(exceptionMessage)
+                    println("--------------------------------------------------------")
+                    println()
+                    for (module in modules) {
+                        println("${module.qualifiedName}: ${module.targetInfo}")
+                        println("        ${module.exceptionMessage}")
+                    }
+                }
             }
         }
     }
@@ -165,6 +178,8 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
         }
     }
 
+    private fun Throwable.deepestCause(): Throwable = cause?.deepestCause() ?: this
+
     override fun processModule(moduleData: ModuleData): ProcessorAction {
         val compiler = K2JVMCompiler()
         val args = compiler.createArguments()
@@ -184,6 +199,8 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
             compiler.exec(collector, services, args)
         } catch (e: Exception) {
             e.printStackTrace()
+            moduleData.exceptionMessage = e.deepestCause().toString()
+            crashedModules += moduleData
             ExitCode.INTERNAL_ERROR
         }
         val resultTime = manager.reportCumulativeTime()
