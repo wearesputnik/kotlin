@@ -234,12 +234,12 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
             }
             ExitCode.COMPILATION_ERROR -> {
                 errorModules += moduleData
-                moduleData.compilationError = collector.messages.first {
+                moduleData.compilationError = collector.messages.firstOrNull {
                     it.severity == CompilerMessageSeverity.ERROR
-                }.message
-                moduleData.jvmInternalError = collector.messages.first {
+                }?.message
+                moduleData.jvmInternalError = collector.messages.firstOrNull {
                     it.severity == CompilerMessageSeverity.EXCEPTION
-                }.message
+                }?.message
                 ProcessorAction.NEXT
             }
             else -> ProcessorAction.NEXT
