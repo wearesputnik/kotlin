@@ -14,6 +14,7 @@ import com.intellij.execution.configurations.RunConfigurationBase
 import com.intellij.execution.ui.RunnerLayoutUi
 import com.intellij.execution.ui.layout.PlaceInGrid
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.content.Content
@@ -24,6 +25,7 @@ import com.intellij.xdebugger.XDebuggerManager
 import com.intellij.xdebugger.XDebuggerManagerListener
 import com.intellij.xdebugger.impl.XDebugSessionImpl
 import org.apache.maven.artifact.versioning.DefaultArtifactVersion
+import org.jetbrains.kotlin.idea.core.util.runInReadActionWithWriteActionPriority
 import org.jetbrains.kotlin.idea.debugger.coroutine.proxy.ManagerThreadExecutor
 import org.jetbrains.kotlin.idea.debugger.coroutine.util.CreateContentParamsProvider
 import org.jetbrains.kotlin.idea.debugger.coroutine.util.logger
@@ -91,7 +93,9 @@ class DebuggerConnection(
     }
 
     override fun processStopped(debugProcess: XDebugProcess) {
-        Disposer.dispose(this)
+        ApplicationManager.getApplication().invokeLater {
+            Disposer.dispose(this)
+        }
     }
 
     private fun registerXCoroutinesPanel(session: XDebugSession): Disposable? {
