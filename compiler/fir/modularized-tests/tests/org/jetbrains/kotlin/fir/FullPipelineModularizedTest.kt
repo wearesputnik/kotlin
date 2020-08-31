@@ -157,7 +157,7 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
                     println("${errorModule.qualifiedName}: ${errorModule.targetInfo}")
                     println("        1st error: ${errorModule.jvmInternalError?.shorten()}")
                 }
-                val crashedModuleGroups = crashedModules.groupBy { it.exceptionMessage.substring(0..59) }
+                val crashedModuleGroups = crashedModules.groupBy { it.exceptionMessage.take(60) }
                 for ((exceptionMessage, modules) in crashedModuleGroups) {
                     println()
                     println(exceptionMessage)
