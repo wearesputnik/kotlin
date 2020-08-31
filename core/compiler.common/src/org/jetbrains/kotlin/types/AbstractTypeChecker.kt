@@ -157,7 +157,7 @@ object AbstractTypeChecker {
         superType: KotlinTypeMarker,
         stubTypesEqualToAnything: Boolean = true
     ): Boolean {
-        return AbstractTypeChecker.isSubtypeOf(context.newBaseTypeCheckerContext(true, stubTypesEqualToAnything), subType, superType)
+        return AbstractTypeChecker.isSubtypeOf(context.newBaseTypeCheckerContext(false, stubTypesEqualToAnything), subType, superType)
     }
 
     fun equalTypes(
