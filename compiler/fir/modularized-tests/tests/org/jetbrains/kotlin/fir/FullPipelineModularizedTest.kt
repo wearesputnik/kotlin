@@ -79,6 +79,13 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
         }
     }
 
+    private fun String.shorten(): String {
+        val split = split("\n")
+        return split.mapIndexedNotNull { index, s ->
+            if (index < 4 || index >= split.size - 6) s else null
+        }.joinToString("\n")
+    }
+
     private fun formatReport(stream: PrintStream, finalReport: Boolean) {
         stream.println("TOTAL MODULES: ${totalModules.size}")
         stream.println("OK MODULES: ${okModules.size}")
@@ -140,7 +147,7 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
                 println()
                 for (errorModule in errorModules) {
                     println("${errorModule.qualifiedName}: ${errorModule.targetInfo}")
-                    println("        1st error: ${errorModule.compilationError}")
+                    println("        1st error: ${errorModule.compilationError?.shorten()}")
                 }
                 val crashedModuleGroups = crashedModules.groupBy { it.exceptionMessage.substring(0..59) }
                 for ((exceptionMessage, modules) in crashedModuleGroups) {
