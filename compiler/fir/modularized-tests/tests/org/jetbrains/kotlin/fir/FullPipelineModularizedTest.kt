@@ -7,8 +7,7 @@ package org.jetbrains.kotlin.fir
 
 import com.intellij.util.io.delete
 import org.jetbrains.kotlin.cli.common.*
-import org.jetbrains.kotlin.cli.common.messages.MessageRenderer
-import org.jetbrains.kotlin.cli.common.messages.PrintingMessageCollector
+import org.jetbrains.kotlin.cli.common.messages.*
 import org.jetbrains.kotlin.cli.jvm.K2JVMCompiler
 import org.jetbrains.kotlin.config.Services
 import org.jetbrains.kotlin.fir.TableTimeUnit.MS
@@ -125,20 +124,44 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
         }
 
         if (finalReport) {
-            println()
-            println("SUCCESSFUL MODULES")
-            println("------------------")
-            println()
-            for (okModule in okModules) {
-                println("${okModule.qualifiedName}: ${okModule.targetInfo}")
+            with(stream) {
+                println()
+                println("SUCCESSFUL MODULES")
+                println("------------------")
+                println()
+                for (okModule in okModules) {
+                    println("${okModule.qualifiedName}: ${okModule.targetInfo}")
+                }
+                println()
+                println("COMPILATION ERRORS")
+                println("------------------")
+                println()
+                for (errorModule in errorModules) {
+                    println("${errorModule.qualifiedName}: ${errorModule.targetInfo}")
+                    println("        1st error: ${errorModule.compilationError}")
+                }
             }
-            println()
-            println("COMPILATION ERRORS")
-            println("------------------")
-            println()
-            for (errorModule in errorModules) {
-                println("${errorModule.qualifiedName}: ${errorModule.targetInfo}")
-            }
+        }
+    }
+
+    private class TestMessageCollector : MessageCollector {
+
+        data class Message(val severity: CompilerMessageSeverity, val message: String, val location: CompilerMessageSourceLocation?)
+
+        val messages = arrayListOf<Message>()
+
+        override fun clear() {
+            messages.clear()
+        }
+
+        override fun report(severity: CompilerMessageSeverity, message: String, location: CompilerMessageSourceLocation?) {
+            messages.add(Message(severity, message, location))
+            if (severity in CompilerMessageSeverity.VERBOSE) return
+            println(MessageRenderer.GRADLE_STYLE.render(severity, message, location))
+        }
+
+        override fun hasErrors(): Boolean = messages.any {
+            it.severity == CompilerMessageSeverity.EXCEPTION || it.severity == CompilerMessageSeverity.ERROR
         }
     }
 
@@ -156,8 +179,9 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
         args.destination = tmp.toAbsolutePath().toFile().toString()
         val manager = CompilerPerformanceManager()
         val services = Services.Builder().register(CommonCompilerPerformanceManager::class.java, manager).build()
+        val collector = TestMessageCollector()
         val result = try {
-            compiler.exec(PrintingMessageCollector(System.out, MessageRenderer.GRADLE_STYLE, false), services, args)
+            compiler.exec(collector, services, args)
         } catch (e: Exception) {
             e.printStackTrace()
             ExitCode.INTERNAL_ERROR
@@ -178,6 +202,9 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
             }
             ExitCode.COMPILATION_ERROR -> {
                 errorModules += moduleData
+                moduleData.compilationError = collector.messages.first {
+                    it.severity == CompilerMessageSeverity.ERROR || it.severity == CompilerMessageSeverity.EXCEPTION
+                }.message
                 ProcessorAction.NEXT
             }
             else -> ProcessorAction.NEXT

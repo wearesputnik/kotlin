@@ -37,6 +37,7 @@ data class ModuleData(
     val sources = rawSources.map { File(ROOT_PATH_PREFIX, it.removePrefix("/")) }
     val javaSourceRoots = rawJavaSourceRoots.map { File(ROOT_PATH_PREFIX, it.removePrefix("/")) }
     lateinit var targetInfo: String
+    var compilationError: String? = null
 }
 
 private fun NodeList.toList(): List<Node> {
