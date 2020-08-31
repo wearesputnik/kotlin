@@ -21,8 +21,8 @@ import java.nio.file.Files
 class FullPipelineModularizedTest : AbstractModularizedTest() {
     override fun beforePass(pass: Int) {
         totalPassResult = CumulativeTime()
-        totalModules = 0
-        okModules = 0
+        totalModules.clear()
+        okModules.clear()
     }
 
     private data class CumulativeTime(
@@ -52,17 +52,17 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
     }
 
     private lateinit var totalPassResult: CumulativeTime
-    private var totalModules = 0
-    private var okModules = 0
+    private val totalModules = mutableListOf<ModuleData>()
+    private val okModules = mutableListOf<ModuleData>()
 
     override fun afterPass(pass: Int) {
-        createReport()
-        require(totalModules > 0) { "No modules were analyzed" }
-        require(okModules > 0) { "All of $totalModules is failed" }
+        createReport(finalReport = pass == PASSES - 1)
+        require(totalModules.isNotEmpty()) { "No modules were analyzed" }
+        require(okModules.isNotEmpty()) { "All of $totalModules is failed" }
     }
 
-    private fun createReport() {
-        formatReport(System.out)
+    private fun createReport(finalReport: Boolean) {
+        formatReport(System.out, finalReport)
 
         PrintStream(
             FileOutputStream(
@@ -70,15 +70,15 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
                 true
             )
         ).use { stream ->
-            formatReport(stream)
+            formatReport(stream, finalReport)
             stream.println()
             stream.println()
         }
     }
 
-    private fun formatReport(stream: PrintStream) {
-        stream.println("TOTAL MODULES: $totalModules")
-        stream.println("OK MODULES: $okModules")
+    private fun formatReport(stream: PrintStream, finalReport: Boolean) {
+        stream.println("TOTAL MODULES: ${totalModules.size}")
+        stream.println("OK MODULES: ${okModules.size}")
         val total = totalPassResult
         var totalGcTimeMs = 0L
         var totalGcCount = 0L
@@ -121,6 +121,14 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
             separator()
             phase("Total", total.totalTime(), total.files, total.lines)
         }
+
+        println()
+        println("SUCCESSFUL MODULES")
+        println("------------------")
+        println()
+        for (okModule in okModules) {
+            println("${okModule.qualifiedName}: ${okModule.targetInfo}")
+        }
     }
 
     override fun processModule(moduleData: ModuleData): ProcessorAction {
@@ -148,12 +156,13 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
         PerformanceCounter.resetAllCounters()
 
         tmp.delete(recursively = true)
-        totalModules++
+        totalModules += moduleData
+        moduleData.targetInfo = manager.getTargetInfo()
 
         return when (result) {
             ExitCode.OK -> {
                 totalPassResult += resultTime
-                okModules++
+                okModules += moduleData
                 ProcessorAction.NEXT
             }
             else -> ProcessorAction.NEXT
