@@ -45,12 +45,22 @@ fun createDeclarationsStubs(
     propertyProtos: List<ProtoBuf.Property>,
     typeAliasesProtos: List<ProtoBuf.TypeAlias>
 ) {
-    for (propertyProto in propertyProtos) {
+    val propertyComparator = compareBy<ProtoBuf.Property>(
+        { if (it.hasReceiver()) 1 else 0 }, // extensions come later than non-extensions
+        { outerContext.nameResolver.getName(it.name) }
+    )
+
+    val functionComparator = compareBy<ProtoBuf.Function>(
+        { if (it.hasReceiver()) 1 else 0 },
+        { outerContext.nameResolver.getName(it.name) }
+    )
+
+    for (propertyProto in propertyProtos.sortedWith(propertyComparator)) {
         if (!shouldSkip(propertyProto.flags, outerContext.nameResolver.getName(propertyProto.name))) {
             PropertyClsStubBuilder(parentStub, outerContext, protoContainer, propertyProto).build()
         }
     }
-    for (functionProto in functionProtos) {
+    for (functionProto in functionProtos.sortedWith(functionComparator)) {
         if (!shouldSkip(functionProto.flags, outerContext.nameResolver.getName(functionProto.name))) {
             FunctionClsStubBuilder(parentStub, outerContext, protoContainer, functionProto).build()
         }
