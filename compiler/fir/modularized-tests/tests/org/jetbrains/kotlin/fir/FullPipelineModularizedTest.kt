@@ -214,8 +214,6 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
             compiler.exec(collector, services, args)
         } catch (e: Exception) {
             e.printStackTrace()
-            moduleData.exceptionMessage = e.deepestCause().toString()
-            crashedModules += moduleData
             ExitCode.INTERNAL_ERROR
         }
         val resultTime = manager.reportCumulativeTime()
@@ -240,6 +238,15 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
                 moduleData.jvmInternalError = collector.messages.firstOrNull {
                     it.severity == CompilerMessageSeverity.EXCEPTION
                 }?.message
+                ProcessorAction.NEXT
+            }
+            ExitCode.INTERNAL_ERROR -> {
+                crashedModules += moduleData
+                moduleData.exceptionMessage = collector.messages.firstOrNull() {
+                    it.severity == CompilerMessageSeverity.EXCEPTION
+                }?.message?.split("\n")?.let {
+                    it.lastOrNull { it.startsWith("Caused by: ") } ?: it.firstOrNull()
+                } ?: "NO MESSAGE"
                 ProcessorAction.NEXT
             }
             else -> ProcessorAction.NEXT
