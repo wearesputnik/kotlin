@@ -23,6 +23,7 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
         totalPassResult = CumulativeTime()
         totalModules.clear()
         okModules.clear()
+        errorModules.clear()
     }
 
     private data class CumulativeTime(
@@ -54,6 +55,7 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
     private lateinit var totalPassResult: CumulativeTime
     private val totalModules = mutableListOf<ModuleData>()
     private val okModules = mutableListOf<ModuleData>()
+    private val errorModules = mutableListOf<ModuleData>()
 
     override fun afterPass(pass: Int) {
         createReport(finalReport = pass == PASSES - 1)
@@ -122,12 +124,21 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
             phase("Total", total.totalTime(), total.files, total.lines)
         }
 
-        println()
-        println("SUCCESSFUL MODULES")
-        println("------------------")
-        println()
-        for (okModule in okModules) {
-            println("${okModule.qualifiedName}: ${okModule.targetInfo}")
+        if (finalReport) {
+            println()
+            println("SUCCESSFUL MODULES")
+            println("------------------")
+            println()
+            for (okModule in okModules) {
+                println("${okModule.qualifiedName}: ${okModule.targetInfo}")
+            }
+            println()
+            println("COMPILATION ERRORS")
+            println("------------------")
+            println()
+            for (errorModule in errorModules) {
+                println("${errorModule.qualifiedName}: ${errorModule.targetInfo}")
+            }
         }
     }
 
@@ -163,6 +174,10 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
             ExitCode.OK -> {
                 totalPassResult += resultTime
                 okModules += moduleData
+                ProcessorAction.NEXT
+            }
+            ExitCode.COMPILATION_ERROR -> {
+                errorModules += moduleData
                 ProcessorAction.NEXT
             }
             else -> ProcessorAction.NEXT
