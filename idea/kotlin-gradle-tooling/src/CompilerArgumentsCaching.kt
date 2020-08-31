@@ -56,7 +56,13 @@ interface ICompilerArgumentsMapper : Serializable {
     fun copyCache(): Map<Int, String>
 }
 
-abstract class CompilerArgumentsMapper(val initialId: Int = 0) : ICompilerArgumentsMapper {
+open class CompilerArgumentsMapper(val initialId: Int = 0) : ICompilerArgumentsMapper {
+
+    constructor(otherMapper: CompilerArgumentsMapper) : this(otherMapper.initialId) {
+        idToCompilerArguments.putAll(otherMapper.idToCompilerArguments)
+        compilerArgumentToId.putAll(otherMapper.compilerArgumentToId)
+        nextId = otherMapper.nextId
+    }
     protected var nextId = initialId
     protected val idToCompilerArguments: MutableMap<Int, String> = mutableMapOf()
     protected val compilerArgumentToId: MutableMap<String, Int> = mutableMapOf()
@@ -99,10 +105,7 @@ class DetachableCompilerArgumentsMapper(override val masterMapper: ICompilerArgu
             compilerArgumentToId[commonArgument] = it
         }
 
-    override fun detach(): ICompilerArgumentsMapper = object : CompilerArgumentsMapper(nextId) {}.apply {
-        idToCompilerArguments.putAll(this@DetachableCompilerArgumentsMapper.idToCompilerArguments)
-        compilerArgumentToId.putAll(this@DetachableCompilerArgumentsMapper.compilerArgumentToId)
-    }
+    override fun detach(): ICompilerArgumentsMapper = CompilerArgumentsMapper(this)
 }
 
 interface IWithCheckoutMapper : ICompilerArgumentsMapper {
