@@ -38,6 +38,7 @@ data class ModuleData(
     val javaSourceRoots = rawJavaSourceRoots.map { File(ROOT_PATH_PREFIX, it.removePrefix("/")) }
     lateinit var targetInfo: String
     var compilationError: String? = null
+    var jvmInternalError: String? = null
     var exceptionMessage: String = "NO MESSAGE"
 }
 

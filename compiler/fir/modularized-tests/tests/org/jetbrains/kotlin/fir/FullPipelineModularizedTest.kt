@@ -145,9 +145,17 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
                 println("COMPILATION ERRORS")
                 println("------------------")
                 println()
-                for (errorModule in errorModules) {
+                for (errorModule in errorModules.filter { it.jvmInternalError == null }) {
                     println("${errorModule.qualifiedName}: ${errorModule.targetInfo}")
-                    println("        1st error: ${errorModule.compilationError?.shorten()}")
+                    println("        1st error: ${errorModule.compilationError}")
+                }
+                println()
+                println("JVM INTERNAL ERRORS")
+                println("------------------")
+                println()
+                for (errorModule in errorModules.filter { it.jvmInternalError != null }) {
+                    println("${errorModule.qualifiedName}: ${errorModule.targetInfo}")
+                    println("        1st error: ${errorModule.jvmInternalError?.shorten()}")
                 }
                 val crashedModuleGroups = crashedModules.groupBy { it.exceptionMessage.substring(0..59) }
                 for ((exceptionMessage, modules) in crashedModuleGroups) {
@@ -227,7 +235,10 @@ class FullPipelineModularizedTest : AbstractModularizedTest() {
             ExitCode.COMPILATION_ERROR -> {
                 errorModules += moduleData
                 moduleData.compilationError = collector.messages.first {
-                    it.severity == CompilerMessageSeverity.ERROR || it.severity == CompilerMessageSeverity.EXCEPTION
+                    it.severity == CompilerMessageSeverity.ERROR
+                }.message
+                moduleData.jvmInternalError = collector.messages.first {
+                    it.severity == CompilerMessageSeverity.EXCEPTION
                 }.message
                 ProcessorAction.NEXT
             }
