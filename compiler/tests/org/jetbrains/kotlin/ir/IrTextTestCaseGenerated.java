@@ -1720,6 +1720,11 @@ public class IrTextTestCaseGenerated extends AbstractIrTextTestCase {
         public void testPutIfAbsent() throws Exception {
             runTest("compiler/testData/ir/irText/firProblems/putIfAbsent.kt");
         }
+
+        @TestMetadata("upperBoundUsesOuterClassParameter.kt")
+        public void testUpperBoundUsesOuterClassParameter() throws Exception {
+            runTest("compiler/testData/ir/irText/firProblems/upperBoundUsesOuterClassParameter.kt");
+        }
     }
 
     @TestMetadata("compiler/testData/ir/irText/lambdas")

@@ -1,0 +1,105 @@
+FILE fqName:test fileName:/upperBoundUsesOuterClassParameter.kt
+  CLASS CLASS name:Container modality:FINAL visibility:public superTypes:[kotlin.Any]
+    $this: VALUE_PARAMETER INSTANCE_RECEIVER name:<this> type:test.Container<T of test.Container>
+    TYPE_PARAMETER name:T index:0 variance: superTypes:[kotlin.Any?]
+    CONSTRUCTOR visibility:public <> () returnType:test.Container<T of test.Container> [primary]
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () [primary] declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:Container modality:FINAL visibility:public superTypes:[kotlin.Any]'
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN <> ($this:kotlin.Any, other:kotlin.Any?) returnType:kotlin.Boolean [fake_override,operator]
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean [operator] declared in kotlin.Any
+      $this: VALUE_PARAMETER name:<this> type:kotlin.Any
+      VALUE_PARAMETER name:other index:0 type:kotlin.Any?
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN <> ($this:kotlin.Any) returnType:kotlin.Int [fake_override]
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in kotlin.Any
+      $this: VALUE_PARAMETER name:<this> type:kotlin.Any
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN <> ($this:kotlin.Any) returnType:kotlin.String [fake_override]
+      overridden:
+        public open fun toString (): kotlin.String declared in kotlin.Any
+      $this: VALUE_PARAMETER name:<this> type:kotlin.Any
+  CLASS CLASS name:B modality:FINAL visibility:public superTypes:[kotlin.Any]
+    $this: VALUE_PARAMETER INSTANCE_RECEIVER name:<this> type:test.B<W of test.B>
+    TYPE_PARAMETER name:W index:0 variance: superTypes:[kotlin.Any?]
+    CONSTRUCTOR visibility:public <> () returnType:test.B<W of test.B> [primary]
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () [primary] declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:B modality:FINAL visibility:public superTypes:[kotlin.Any]'
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN <> ($this:kotlin.Any, other:kotlin.Any?) returnType:kotlin.Boolean [fake_override,operator]
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean [operator] declared in kotlin.Any
+      $this: VALUE_PARAMETER name:<this> type:kotlin.Any
+      VALUE_PARAMETER name:other index:0 type:kotlin.Any?
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN <> ($this:kotlin.Any) returnType:kotlin.Int [fake_override]
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in kotlin.Any
+      $this: VALUE_PARAMETER name:<this> type:kotlin.Any
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN <> ($this:kotlin.Any) returnType:kotlin.String [fake_override]
+      overridden:
+        public open fun toString (): kotlin.String declared in kotlin.Any
+      $this: VALUE_PARAMETER name:<this> type:kotlin.Any
+  CLASS CLASS name:C modality:FINAL visibility:public superTypes:[kotlin.Any]
+    $this: VALUE_PARAMETER INSTANCE_RECEIVER name:<this> type:test.C<X of test.C>
+    TYPE_PARAMETER name:X index:0 variance: superTypes:[kotlin.Any?]
+    CONSTRUCTOR visibility:public <> () returnType:test.C<X of test.C> [primary]
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () [primary] declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:C modality:FINAL visibility:public superTypes:[kotlin.Any]'
+    PROPERTY name:createY visibility:public modality:FINAL [val]
+      FUN name:<get-createY> visibility:public modality:FINAL <Y> ($this:test.C<X of test.C>, $receiver:test.B<Y of test.C.<get-createY>>) returnType:kotlin.reflect.KTypeParameter
+        correspondingProperty: PROPERTY name:createY visibility:public modality:FINAL [val]
+        TYPE_PARAMETER name:Y index:0 variance: superTypes:[X of test.C]
+        $this: VALUE_PARAMETER name:<this> type:test.C<X of test.C>
+        $receiver: VALUE_PARAMETER name:<this> type:test.B<Y of test.C.<get-createY>>
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun <get-createY> <Y> (): kotlin.reflect.KTypeParameter declared in test.C'
+            TYPE_OP type=kotlin.reflect.KTypeParameter origin=CAST typeOperand=kotlin.reflect.KTypeParameter
+              CALL 'public abstract fun <get-classifier> (): kotlin.reflect.KClassifier? declared in kotlin.reflect.KType' type=kotlin.reflect.KClassifier? origin=GET_PROPERTY
+                $this: CALL 'public final fun CHECK_NOT_NULL <T0> (arg0: T0 of kotlin.internal.ir.CHECK_NOT_NULL?): T0 of kotlin.internal.ir.CHECK_NOT_NULL declared in kotlin.internal.ir' type=kotlin.reflect.KType origin=EXCLEXCL
+                  <T0>: kotlin.reflect.KType
+                  arg0: CALL 'public final fun <get-type> (): kotlin.reflect.KType? declared in kotlin.reflect.KTypeProjection' type=kotlin.reflect.KType? origin=GET_PROPERTY
+                    $this: CALL 'public final fun single <T> (): T of kotlin.collections.single declared in kotlin.collections' type=kotlin.reflect.KTypeProjection origin=null
+                      <T>: kotlin.reflect.KTypeProjection
+                      $receiver: CALL 'public abstract fun <get-arguments> (): kotlin.collections.List<kotlin.reflect.KTypeProjection> declared in kotlin.reflect.KType' type=kotlin.collections.List<kotlin.reflect.KTypeProjection> origin=GET_PROPERTY
+                        $this: CALL 'public final fun typeOf <T> (): kotlin.reflect.KType [inline] declared in kotlin.reflect' type=kotlin.reflect.KType origin=null
+                          <T>: test.Container<Y of test.C.<get-createY>>
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN <> ($this:kotlin.Any, other:kotlin.Any?) returnType:kotlin.Boolean [fake_override,operator]
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean [operator] declared in kotlin.Any
+      $this: VALUE_PARAMETER name:<this> type:kotlin.Any
+      VALUE_PARAMETER name:other index:0 type:kotlin.Any?
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN <> ($this:kotlin.Any) returnType:kotlin.Int [fake_override]
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in kotlin.Any
+      $this: VALUE_PARAMETER name:<this> type:kotlin.Any
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN <> ($this:kotlin.Any) returnType:kotlin.String [fake_override]
+      overridden:
+        public open fun toString (): kotlin.String declared in kotlin.Any
+      $this: VALUE_PARAMETER name:<this> type:kotlin.Any
+  FUN name:box visibility:public modality:FINAL <> () returnType:kotlin.String
+    BLOCK_BODY
+      CALL 'public final fun with <T, R> (receiver: T of kotlin.with, block: @[ExtensionFunctionType] kotlin.Function1<T of kotlin.with, R of kotlin.with>): R of kotlin.with [inline] declared in kotlin' type=kotlin.Unit origin=null
+        <T>: test.C<kotlin.Any>
+        <R>: kotlin.Unit
+        receiver: CONSTRUCTOR_CALL 'public constructor <init> () [primary] declared in test.C' type=test.C<kotlin.Any> origin=null
+          <class: X>: kotlin.Any
+        block: FUN_EXPR type=@[ExtensionFunctionType] kotlin.Function1<test.C<kotlin.Any>, kotlin.Unit> origin=LAMBDA
+          FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL <> ($receiver:test.C<kotlin.Any>) returnType:kotlin.Unit
+            $receiver: VALUE_PARAMETER name:<this> type:test.C<kotlin.Any>
+            BLOCK_BODY
+              VAR name:y type:kotlin.reflect.KTypeParameter [val]
+                CALL 'public final fun <get-createY> <Y> (): kotlin.reflect.KTypeParameter declared in test.C' type=kotlin.reflect.KTypeParameter origin=GET_PROPERTY
+                  <Y>: kotlin.Any
+                  $this: GET_VAR '<this>: test.C<kotlin.Any> declared in test.box.<anonymous>' type=test.C<kotlin.Any> origin=null
+                  $receiver: CONSTRUCTOR_CALL 'public constructor <init> () [primary] declared in test.B' type=test.B<kotlin.Any> origin=null
+                    <class: W>: kotlin.Any
+              CALL 'public final fun assertEquals <T> (expected: T of kotlin.test.assertEquals, actual: T of kotlin.test.assertEquals, message: kotlin.String?): kotlin.Unit declared in kotlin.test' type=kotlin.Unit origin=null
+                <T>: kotlin.String
+                expected: CONST String type=kotlin.String value="X"
+                actual: CALL 'public final fun joinToString <T> (separator: kotlin.CharSequence, prefix: kotlin.CharSequence, postfix: kotlin.CharSequence, limit: kotlin.Int, truncated: kotlin.CharSequence, transform: kotlin.Function1<T of kotlin.collections.joinToString, kotlin.CharSequence>?): kotlin.String declared in kotlin.collections' type=kotlin.String origin=null
+                  <T>: kotlin.reflect.KType
+                  $receiver: CALL 'public abstract fun <get-upperBounds> (): kotlin.collections.List<kotlin.reflect.KType> declared in kotlin.reflect.KTypeParameter' type=kotlin.collections.List<kotlin.reflect.KType> origin=GET_PROPERTY
+                    $this: GET_VAR 'val y: kotlin.reflect.KTypeParameter [val] declared in test.box.<anonymous>' type=kotlin.reflect.KTypeParameter origin=null
+      RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in test'
+        CONST String type=kotlin.String value="OK"
