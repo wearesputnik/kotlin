@@ -216,7 +216,9 @@ class FirClassSubstitutionScope(
 
     private fun createSubstitutedData(member: FirCallableMemberDeclaration<*>): SubstitutedData {
         val (newTypeParameters, substitutor) = createNewTypeParametersAndSubstitutor(
-            member as FirTypeParameterRefsOwner, substitutor
+            member as FirTypeParameterRefsOwner,
+            substitutor,
+            recreateTypeParameters = derivedClassId != null && derivedClassId != member.symbol.callableId.classId
         )
 
         val receiverType = member.receiverTypeRef?.coneType
@@ -539,11 +541,13 @@ class FirClassSubstitutionScope(
 
         // Returns a list of type parameters, and a substitutor that should be used for all other types
         private fun createNewTypeParametersAndSubstitutor(
-            member: FirTypeParameterRefsOwner, substitutor: ConeSubstitutor
+            member: FirTypeParameterRefsOwner,
+            substitutor: ConeSubstitutor,
+            recreateTypeParameters: Boolean = true
         ): Pair<List<FirTypeParameterRef>, ConeSubstitutor> {
             if (member.typeParameters.isEmpty()) return Pair(member.typeParameters, substitutor)
             val newTypeParameters = member.typeParameters.map { typeParameter ->
-                if (typeParameter !is FirTypeParameter) return@map null
+                if (typeParameter !is FirTypeParameter || !recreateTypeParameters) return@map null
                 FirTypeParameterBuilder().apply {
                     source = typeParameter.source
                     session = typeParameter.session
