@@ -61,6 +61,11 @@ public class Usage {
             appendln(sb, BAT_DELIMITER_CHARACTERS_NOTE);
         }
 
+        if (!extraHelp && tool instanceof CLICompiler<?>) {
+            appendln(sb, "");
+            appendln(sb, "For details, see https://kotlinlang.org/docs/reference/compiler-reference.html");
+        }
+
         return sb.toString();
     }
 
