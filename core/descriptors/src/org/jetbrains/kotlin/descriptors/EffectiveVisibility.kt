@@ -16,23 +16,13 @@
 
 package org.jetbrains.kotlin.descriptors
 
-import org.jetbrains.kotlin.resolve.DescriptorUtils
-import org.jetbrains.kotlin.types.KotlinType
-import org.jetbrains.kotlin.descriptors.EffectiveVisibility.*
-import org.jetbrains.kotlin.descriptors.RelationToType.*
-import org.jetbrains.kotlin.resolve.descriptorUtil.builtIns
-import org.jetbrains.kotlin.resolve.descriptorUtil.isPublishedApi
+import org.jetbrains.kotlin.descriptors.EffectiveVisibility.Permissiveness
 import org.jetbrains.kotlin.types.AbstractTypeChecker
 import org.jetbrains.kotlin.types.AbstractTypeCheckerContext
-import org.jetbrains.kotlin.types.checker.ClassicTypeCheckerContext
-import org.jetbrains.kotlin.types.checker.ClassicTypeSystemContextImpl
 import org.jetbrains.kotlin.types.model.KotlinTypeMarker
-import org.jetbrains.kotlin.types.model.TypeSystemCommonSuperTypesContext
-import org.jetbrains.kotlin.types.model.TypeSystemContext
 import org.jetbrains.kotlin.types.model.typeConstructor
 
 sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = false, val privateApi: Boolean = false) {
-
     override fun toString() = name
 
     //                    Public
@@ -49,31 +39,31 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
 
 
     object Private : EffectiveVisibility("private", privateApi = true) {
-        override fun relation(other: EffectiveVisibility) =
-                if (this == other || Local == other) Permissiveness.SAME else Permissiveness.LESS
+        override fun relation(other: EffectiveVisibility): Permissiveness =
+            if (this == other || Local == other) Permissiveness.SAME else Permissiveness.LESS
 
-        override fun toVisibility() = Visibilities.PRIVATE
+        override fun toVisibility(): Visibility = Visibilities.PRIVATE
     }
 
     // Effectively same as Private
     object Local : EffectiveVisibility("local") {
-        override fun relation(other: EffectiveVisibility) =
-                if (this == other || Private == other) Permissiveness.SAME else Permissiveness.LESS
+        override fun relation(other: EffectiveVisibility): Permissiveness =
+            if (this == other || Private == other) Permissiveness.SAME else Permissiveness.LESS
 
-        override fun toVisibility() = Visibilities.LOCAL
+        override fun toVisibility(): Visibility = Visibilities.LOCAL
     }
 
     object Public : EffectiveVisibility("public", publicApi = true) {
-        override fun relation(other: EffectiveVisibility) =
-                if (this == other) Permissiveness.SAME else Permissiveness.MORE
+        override fun relation(other: EffectiveVisibility): Permissiveness =
+            if (this == other) Permissiveness.SAME else Permissiveness.MORE
 
-        override fun toVisibility() = Visibilities.PUBLIC
+        override fun toVisibility(): Visibility = Visibilities.PUBLIC
     }
 
     abstract class InternalOrPackage protected constructor(internal: Boolean) : EffectiveVisibility(
-            if (internal) "internal" else "public/*package*/"
+        if (internal) "internal" else "public/*package*/"
     ) {
-        override fun relation(other: EffectiveVisibility) = when (other) {
+        override fun relation(other: EffectiveVisibility): Permissiveness = when (other) {
             Public -> Permissiveness.LESS
             Private, Local, InternalProtectedBound, is InternalProtected -> Permissiveness.MORE
             is InternalOrPackage -> Permissiveness.SAME
@@ -89,11 +79,11 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
     }
 
     object Internal : InternalOrPackage(true) {
-        override fun toVisibility() = Visibilities.INTERNAL
+        override fun toVisibility(): Visibility = Visibilities.INTERNAL
     }
 
     object PackagePrivate : InternalOrPackage(false) {
-        override fun toVisibility() = Visibilities.PRIVATE
+        override fun toVisibility(): Visibility = Visibilities.PRIVATE
     }
 
     class Protected(
@@ -107,7 +97,7 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
 
         override fun toString() = "${super.toString()} (in ${containerType?.typeConstructor(typeContext) ?: '?'})"
 
-        override fun relation(other: EffectiveVisibility) = when (other) {
+        override fun relation(other: EffectiveVisibility): Permissiveness = when (other) {
             Public -> Permissiveness.LESS
             Private, Local, ProtectedBound, InternalProtectedBound -> Permissiveness.MORE
             is Protected -> containerRelation(containerType, other.containerType, typeContext)
@@ -134,12 +124,12 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
             is InternalOrPackage -> InternalProtected(containerType, typeContext)
         }
 
-        override fun toVisibility() = Visibilities.PROTECTED
+        override fun toVisibility(): Visibility = Visibilities.PROTECTED
     }
 
     // Lower bound for all protected visibilities
     object ProtectedBound : EffectiveVisibility("protected (in different classes)", publicApi = true) {
-        override fun relation(other: EffectiveVisibility) = when (other) {
+        override fun relation(other: EffectiveVisibility): Permissiveness = when (other) {
             Public, is Protected -> Permissiveness.LESS
             Private, Local, InternalProtectedBound -> Permissiveness.MORE
             ProtectedBound -> Permissiveness.SAME
@@ -152,7 +142,7 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
             is InternalOrPackage, is InternalProtected -> InternalProtectedBound
         }
 
-        override fun toVisibility() = Visibilities.PROTECTED
+        override fun toVisibility(): Visibility = Visibilities.PROTECTED
     }
 
     // Lower bound for internal and protected(C)
@@ -167,7 +157,7 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
 
         override fun toString() = "${super.toString()} (in ${containerType?.typeConstructor(typeContext) ?: '?'})"
 
-        override fun relation(other: EffectiveVisibility) = when (other) {
+        override fun relation(other: EffectiveVisibility): Permissiveness = when (other) {
             Public, is InternalOrPackage -> Permissiveness.LESS
             Private, Local, InternalProtectedBound -> Permissiveness.MORE
             is InternalProtected -> containerRelation(containerType, other.containerType, typeContext)
@@ -190,18 +180,18 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
             ProtectedBound -> InternalProtectedBound
         }
 
-        override fun toVisibility() = Visibilities.PRIVATE
+        override fun toVisibility(): Visibility = Visibilities.PRIVATE
     }
 
     // Lower bound for internal and protected lower bound
     object InternalProtectedBound : EffectiveVisibility("internal & protected (in different classes)") {
-        override fun relation(other: EffectiveVisibility) = when (other) {
+        override fun relation(other: EffectiveVisibility): Permissiveness = when (other) {
             Public, is Protected, is InternalProtected, ProtectedBound, is InternalOrPackage -> Permissiveness.LESS
             Private, Local -> Permissiveness.MORE
             InternalProtectedBound -> Permissiveness.SAME
         }
 
-        override fun toVisibility() = Visibilities.PRIVATE
+        override fun toVisibility(): Visibility = Visibilities.PRIVATE
     }
 
     enum class Permissiveness {
@@ -215,50 +205,12 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
 
     abstract fun toVisibility(): Visibility
 
-    open internal fun lowerBound(other: EffectiveVisibility) = when (relation(other)) {
+    internal open fun lowerBound(other: EffectiveVisibility) = when (relation(other)) {
         Permissiveness.SAME, Permissiveness.LESS -> this
         Permissiveness.MORE -> other
         Permissiveness.UNKNOWN -> Private
     }
 }
-
-internal fun containerRelation(
-    first: KotlinTypeMarker?,
-    second: KotlinTypeMarker?,
-    typeContext: AbstractTypeCheckerContext
-): Permissiveness {
-    return when {
-        first == null || second == null -> Permissiveness.UNKNOWN
-        first == second -> Permissiveness.SAME
-        AbstractTypeChecker.isSubtypeOf(typeContext, first, second) -> Permissiveness.LESS
-        AbstractTypeChecker.isSubtypeOf(typeContext, second, first) -> Permissiveness.MORE
-        else -> Permissiveness.UNKNOWN
-    }
-}
-
-private fun lowerBound(first: EffectiveVisibility, second: EffectiveVisibility) =
-        first.lowerBound(second)
-
-private fun lowerBound(first: EffectiveVisibility, args: List<EffectiveVisibility>) =
-        args.fold(first, { x, y -> x.lowerBound(y) })
-
-private fun lowerBound(args: List<EffectiveVisibility>) =
-        if (args.isEmpty()) Public else lowerBound(args.first(), args.subList(1, args.size))
-
-private fun Visibility.forVisibility(descriptor: DeclarationDescriptor, checkPublishedApi: Boolean = false): EffectiveVisibility =
-        when (this) {
-            Visibilities.PRIVATE, Visibilities.PRIVATE_TO_THIS, Visibilities.INVISIBLE_FAKE -> Private
-            Visibilities.PROTECTED -> Protected((descriptor.containingDeclaration as? ClassDescriptor)?.defaultType, ClassicTypeCheckerContext(errorTypeEqualsToAnything = false))
-            Visibilities.INTERNAL -> if (!checkPublishedApi ||
-                                         !descriptor.isPublishedApi()) Internal else Public
-            Visibilities.PUBLIC -> Public
-            Visibilities.LOCAL -> Local
-        // NB: visibility must be already normalized here, so e.g. no JavaVisibilities are possible at this point
-            else -> throw AssertionError("Visibility $name is not allowed in forVisibility")
-        }
-
-fun effectiveVisibility(visibility: Visibility, descriptor: DeclarationDescriptor, checkPublishedApi: Boolean = false) =
-        visibility.forVisibility(descriptor, checkPublishedApi)
 
 enum class RelationToType(val description: String) {
     CONSTRUCTOR(""),
@@ -274,53 +226,17 @@ enum class RelationToType(val description: String) {
     override fun toString() = description
 }
 
-data class DescriptorWithRelation(val descriptor: ClassifierDescriptor, private val relation: RelationToType) {
-    fun effectiveVisibility() =
-            (descriptor as? ClassDescriptor)?.visibility?.effectiveVisibility(descriptor, false) ?: Public
-
-    override fun toString() = "$relation ${descriptor.name}"
-}
-
-private fun ClassifierDescriptor.dependentDescriptors(ownRelation: RelationToType): Set<DescriptorWithRelation> =
-        setOf(DescriptorWithRelation(this, ownRelation)) +
-        ((this.containingDeclaration as? ClassifierDescriptor)?.dependentDescriptors(ownRelation.containerRelation()) ?: emptySet())
-
-fun ClassDescriptor.effectiveVisibility(checkPublishedApi: Boolean = false) = effectiveVisibility(emptySet(), checkPublishedApi)
-
-private fun ClassDescriptor.effectiveVisibility(classes: Set<ClassDescriptor>, checkPublishedApi: Boolean): EffectiveVisibility =
-        if (this in classes) Public
-        else with(this.containingDeclaration as? ClassDescriptor) {
-            lowerBound(visibility.effectiveVisibility(this@effectiveVisibility, checkPublishedApi), this?.effectiveVisibility(classes + this@effectiveVisibility, checkPublishedApi) ?: Public)
-        }
-
-// Should collect all dependent classifier descriptors, to get verbose diagnostic
-private fun KotlinType.dependentDescriptors() = dependentDescriptors(emptySet(), CONSTRUCTOR)
-
-private fun KotlinType.dependentDescriptors(types: Set<KotlinType>, ownRelation: RelationToType): Set<DescriptorWithRelation> {
-    if (this in types) return emptySet()
-    val ownDependent = constructor.declarationDescriptor?.dependentDescriptors(ownRelation) ?: emptySet()
-    val argumentDependent = arguments.map { it.type.dependentDescriptors(types + this, ARGUMENT) }.flatten()
-    return ownDependent + argumentDependent
-}
-
-private fun Set<DescriptorWithRelation>.leastPermissive(base: EffectiveVisibility): DescriptorWithRelation? {
-    for (descriptorWithRelation in this) {
-        val currentVisibility = descriptorWithRelation.effectiveVisibility()
-        when (currentVisibility.relation(base)) {
-            Permissiveness.LESS, Permissiveness.UNKNOWN -> {
-                return descriptorWithRelation
-            }
-            else -> {}
-        }
+internal fun containerRelation(
+    first: KotlinTypeMarker?,
+    second: KotlinTypeMarker?,
+    typeContext: AbstractTypeCheckerContext
+): Permissiveness {
+    return when {
+        first == null || second == null -> Permissiveness.UNKNOWN
+        first == second -> Permissiveness.SAME
+        AbstractTypeChecker.isSubtypeOf(typeContext, first, second) -> Permissiveness.LESS
+        AbstractTypeChecker.isSubtypeOf(typeContext, second, first) -> Permissiveness.MORE
+        else -> Permissiveness.UNKNOWN
     }
-    return null
 }
-
-fun KotlinType.leastPermissiveDescriptor(base: EffectiveVisibility) = dependentDescriptors().leastPermissive(base)
-
-fun DeclarationDescriptorWithVisibility.effectiveVisibility(
-        visibility: Visibility = this.visibility, checkPublishedApi: Boolean = false
-): EffectiveVisibility =
-        lowerBound(visibility.effectiveVisibility(this, checkPublishedApi),
-                   (this.containingDeclaration as? ClassDescriptor)?.effectiveVisibility(checkPublishedApi) ?: Public)
 
