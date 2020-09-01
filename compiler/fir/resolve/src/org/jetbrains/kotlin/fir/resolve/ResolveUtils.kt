@@ -114,7 +114,9 @@ private fun mapTypeAliasArguments(
     abbreviatedType: ConeClassLikeType,
     resultingType: ConeClassLikeType,
 ): ConeKotlinType {
-    val typeAliasMap = typeAlias.typeParameters.map { it.symbol }.zip(abbreviatedType.typeArguments).toMap()
+    val typeAliasMap = typeAlias.typeParameters.map { it.symbol }.zip(
+        abbreviatedType.typeArguments.takeIf { it.isNotEmpty() } ?: Array(typeAlias.typeParameters.size) { ConeStarProjection }
+    ).toMap()
 
     val substitutor = object : AbstractConeSubstitutor() {
         override fun substituteType(type: ConeKotlinType): ConeKotlinType? {
