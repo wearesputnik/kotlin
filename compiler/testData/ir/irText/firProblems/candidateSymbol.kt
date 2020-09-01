@@ -1,3 +1,4 @@
+// FIR_IDENTICAL
 class Candidate(val symbol: AbstractFirBasedSymbol<*>)
 
 abstract class AbstractFirBasedSymbol<E> where E : FirSymbolOwner<E>, E : FirDeclaration {

@@ -9,6 +9,7 @@ import org.jetbrains.kotlin.builtins.jvm.JavaToKotlinClassMap
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.*
+import org.jetbrains.kotlin.fir.resolve.substitution.ConeSubstitutorByStar
 import org.jetbrains.kotlin.fir.resolve.transformers.createSubstitutionForSupertype
 import org.jetbrains.kotlin.fir.typeContext
 import org.jetbrains.kotlin.fir.scopes.FirTypeScope
@@ -74,9 +75,10 @@ fun createSubstitution(
                 typeArgument.type
             }
             else /* StarProjection */ -> {
+                val substitutorByStar = ConeSubstitutorByStar(typeParameterSymbol)
                 ConeTypeIntersector.intersectTypes(
                     session.typeContext,
-                    typeParameterSymbol.fir.bounds.map { it.coneType }
+                    typeParameterSymbol.fir.bounds.map { substitutorByStar.substituteType(it.coneType) ?: it.coneType }
                 )
             }
         }
