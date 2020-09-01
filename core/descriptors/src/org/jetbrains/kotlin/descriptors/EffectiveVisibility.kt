@@ -42,7 +42,7 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
         override fun relation(other: EffectiveVisibility): Permissiveness =
             if (this == other || Local == other) Permissiveness.SAME else Permissiveness.LESS
 
-        override fun toVisibility(): Visibility = Visibilities.PRIVATE
+        override fun toVisibility(): DescriptorVisibility = DescriptorVisibilities.PRIVATE
     }
 
     // Effectively same as Private
@@ -50,14 +50,14 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
         override fun relation(other: EffectiveVisibility): Permissiveness =
             if (this == other || Private == other) Permissiveness.SAME else Permissiveness.LESS
 
-        override fun toVisibility(): Visibility = Visibilities.LOCAL
+        override fun toVisibility(): DescriptorVisibility = DescriptorVisibilities.LOCAL
     }
 
     object Public : EffectiveVisibility("public", publicApi = true) {
         override fun relation(other: EffectiveVisibility): Permissiveness =
             if (this == other) Permissiveness.SAME else Permissiveness.MORE
 
-        override fun toVisibility(): Visibility = Visibilities.PUBLIC
+        override fun toVisibility(): DescriptorVisibility = DescriptorVisibilities.PUBLIC
     }
 
     abstract class InternalOrPackage protected constructor(internal: Boolean) : EffectiveVisibility(
@@ -79,11 +79,11 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
     }
 
     object Internal : InternalOrPackage(true) {
-        override fun toVisibility(): Visibility = Visibilities.INTERNAL
+        override fun toVisibility(): DescriptorVisibility = DescriptorVisibilities.INTERNAL
     }
 
     object PackagePrivate : InternalOrPackage(false) {
-        override fun toVisibility(): Visibility = Visibilities.PRIVATE
+        override fun toVisibility(): DescriptorVisibility = DescriptorVisibilities.PRIVATE
     }
 
     class Protected(
@@ -124,7 +124,7 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
             is InternalOrPackage -> InternalProtected(containerType, typeContext)
         }
 
-        override fun toVisibility(): Visibility = Visibilities.PROTECTED
+        override fun toVisibility(): DescriptorVisibility = DescriptorVisibilities.PROTECTED
     }
 
     // Lower bound for all protected visibilities
@@ -142,7 +142,7 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
             is InternalOrPackage, is InternalProtected -> InternalProtectedBound
         }
 
-        override fun toVisibility(): Visibility = Visibilities.PROTECTED
+        override fun toVisibility(): DescriptorVisibility = DescriptorVisibilities.PROTECTED
     }
 
     // Lower bound for internal and protected(C)
@@ -180,7 +180,7 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
             ProtectedBound -> InternalProtectedBound
         }
 
-        override fun toVisibility(): Visibility = Visibilities.PRIVATE
+        override fun toVisibility(): DescriptorVisibility = DescriptorVisibilities.PRIVATE
     }
 
     // Lower bound for internal and protected lower bound
@@ -191,7 +191,7 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
             InternalProtectedBound -> Permissiveness.SAME
         }
 
-        override fun toVisibility(): Visibility = Visibilities.PRIVATE
+        override fun toVisibility(): DescriptorVisibility = DescriptorVisibilities.PRIVATE
     }
 
     enum class Permissiveness {
@@ -203,7 +203,7 @@ sealed class EffectiveVisibility(val name: String, val publicApi: Boolean = fals
 
     abstract fun relation(other: EffectiveVisibility): Permissiveness
 
-    abstract fun toVisibility(): Visibility
+    abstract fun toVisibility(): DescriptorVisibility
 
     internal open fun lowerBound(other: EffectiveVisibility) = when (relation(other)) {
         Permissiveness.SAME, Permissiveness.LESS -> this
